@@ -1,5 +1,4 @@
 from enum import Enum
-from struct import error
 
 from pydantic import BaseModel
 
