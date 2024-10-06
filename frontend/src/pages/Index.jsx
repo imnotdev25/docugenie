@@ -33,7 +33,7 @@ const Index = () => {
       <div className="relative z-10 text-center mb-12">
         <h1 className="text-4xl md:text-6xl font-bold mb-6 text-gray-800 mt-20">DocuGenie</h1>
         <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-          Are You Facing Difficulties With Your Website? Do You Have A Website But Lack Traffic? No Need To Worry.
+          Chat with your docs ...
         </p>
         <Button onClick={() => navigate('/chat')} className="bg-black text-white hover:bg-gray-800 text-base md:text-lg px-6 md:px-8 py-2 md:py-3">
           Get Started
