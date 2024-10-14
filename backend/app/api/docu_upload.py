@@ -7,8 +7,8 @@ from app.utils.file_utils import save_uploaded_file, is_valid_file
 from app.models.file import FileType
 from app.services.ingest import read_content, read_url_content
 from app.services.chunking import process_file
-from app.services.embedding import text_to_tokens
-from app.services.querying import save_embeddings
+from app.services.text_embedding import text_to_tokens
+from app.services.vector_db_crud import save_embeddings
 from app.utils.file_utils import file_uuid
 from app.logger import logger
 

@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     )
 
     # FastAPI Settings
-    PROJECT_NAME: str = "Face Secure"
-    STACK_NAME: str = "fastapi-opencv"
+    PROJECT_NAME: str = "FastAPI"
+    STACK_NAME: str = "fastapi"
     API_PREFIX: str = ""  # api/v1, api versioning
 
     # Database
