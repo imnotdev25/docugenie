@@ -17,7 +17,6 @@ class Settings(BaseSettings):
     # Database
 
     POSTGRES_URI: str = "postgresql+psycopg2://postgres:postgres@db:5432/postgres"
-    PGVECTOR_URI: str = "postgresql://postgres:postgres@db:5432/postgres"
 
     # RAG
     CHUNK_SIZE: int = 1000

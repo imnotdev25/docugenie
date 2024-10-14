@@ -7,11 +7,13 @@ from bs4 import BeautifulSoup
 from docx import Document
 from httpx import Client
 from pptx import Presentation
+from fastapi import UploadFile
 
-from backend.app.models.file import FileType
+from app.models.file import FileType
+from app.logger import logger
 
 
-def read_content(file_path: Path, file_type: FileType) -> str:
+def read_content(file_path: Path | UploadFile, file_type: FileType) -> str | None:
     content = ""
 
     if file_type == FileType.pdf:
@@ -52,6 +54,12 @@ def read_content(file_path: Path, file_type: FileType) -> str:
             data = json.load(f)
             content = json.dumps(data, indent=2)
 
+    else:
+        logger.error(f"Unsupported file type: {file_type}")
+        return None
+
+    logger.info(f"Content extracted from {file_path} of type {file_type} \n"
+                f"{content[:100]}")
     return content
 
 
@@ -60,4 +68,6 @@ def read_url_content(url: str) -> str:
     response = client.get(url)
     soup = BeautifulSoup(response.text, "html.parser")
     content = soup.get_text()
+    logger.info(f"Content extracted from {url} \n"
+                f"{content[:100]}")
     return content

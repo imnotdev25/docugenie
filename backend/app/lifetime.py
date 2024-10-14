@@ -1,19 +1,17 @@
 from fastapi import FastAPI
 
-
-# from app.database.db import init_db, shutdown_db
+from app.databases.db import init_db, close_db
 
 
 def startup(app: FastAPI):
-    async def _startup():
-        pass  # await init_db()
+    def _startup():
+        init_db()
 
     return _startup
 
 
 def shutdown(app: FastAPI):
-    async def _shutdown():
-        pass
-        # await shutdown_db()
+    def _shutdown():
+        close_db()
 
     return _shutdown

@@ -10,7 +10,6 @@ python = "^3.11"
 fastapi = "^0.115.0"
 langchain = {extras = ["openai"], version = "^0.3.0"}
 pypdf2 = "^3.0.1"
-pinecone = "^5.3.1"
 sqlmodel = "^0.0.22"
 psycopg2-binary = "^2.9.9"
 pgvector = "^0.3.4"
@@ -21,18 +20,12 @@ langchain-core = "^0.3.8"
 uvicorn = "^0.31.0"
 gunicorn = "^23.0.0"
 python-multipart = "^0.0.12"
-transformers = "^4.45.1"
-torch = {version = "^2.4.1+cpu", source = "pytorch-cpu"}
-tiktoken = "^0.7.0"
 python-docx = "^1.1.2"
 python-pptx = "^1.0.2"
 bs4 = "^0.0.2"
 pandas = "^2.2.3"
+tiktoken = "^0.8.0"
 
-[[tool.poetry.source]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
-priority = "explicit"
 
 [build-system]
 requires = ["poetry-core"]

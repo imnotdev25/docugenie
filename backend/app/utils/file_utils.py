@@ -1,7 +1,7 @@
 import os
 import uuid
 
-from backend.app.models.file import File
+from app.models.file import File
 
 
 def save_uploaded_file(file, filename):

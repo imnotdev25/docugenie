@@ -1,11 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.api.base import base_router
-from backend.app.api.docu_upload import du_upload_router
-from backend.app.config import settings
-from backend.app.lifetime import shutdown
-from backend.app.lifetime import startup
+from app.api.base import base_router
+from app.api.docu_upload import du_upload_router
+from app.config import settings
+from app.lifetime import shutdown
+from app.lifetime import startup
+
 
 
 app = FastAPI(
