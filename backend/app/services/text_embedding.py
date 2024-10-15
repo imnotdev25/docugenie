@@ -1,4 +1,5 @@
 import tiktoken
+
 from app.logger import logger
 
 
@@ -10,7 +11,7 @@ def text_to_tokens(text: str | list, encoder: str = "gpt-4o") -> list:
         return [encoder.encode(t) for t in text]
     else:
         logger.error("Input text must be a string or a list of strings.")
-        raise ValueError("Input text must be a string or a list of strings.")
+        raise Inv("Input text must be a string or a list of strings.")
 
 
 def tokens_to_text(tokens: list, encoder: str = "gpt-4o") -> str:

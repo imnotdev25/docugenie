@@ -27,7 +27,7 @@ def save_embeddings(index_name: str, doc_metadata: dict, embeddings: list, doc_u
             raise Exception(f"Error saving embeddings: {err}") from err
 
 
-def query_similar_embeddings(query_embedding, top_n=5):
+def query_similar_embeddings(query_embedding: str, top_n: int = 5):
     query_vector = np.array(query_embedding, dtype=np.float32).tolist()
 
     with next(get_session()) as session:
@@ -36,4 +36,5 @@ def query_similar_embeddings(query_embedding, top_n=5):
         ).limit(top_n)
 
         results = session.exec(stmt).all()
+        logger.info(f"Found {len(results)} similar embeddings")
         return results

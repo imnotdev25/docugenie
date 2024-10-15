@@ -1,6 +1,6 @@
 import re
-import tiktoken
 
+import tiktoken
 
 
 def remove_special_characters(content: str) -> str:
@@ -19,21 +19,21 @@ def preprocess_content(content: str) -> str:
     return content
 
 
-def split_based_on_tokens(content: str, max_tokens: int = 512) -> list:
+def split_based_on_tokens(content: str, max_tokens: int = 512, overlap_tokens: int = 100) -> list:
     encoder = tiktoken.encoding_for_model("gpt-4o")
     tokens = encoder.encode(content)
+    chunks = []
+    start = 0
+    while start < len(tokens):
+        end = start + max_tokens
+        chunk = tokens[start:end]
+        chunks.append(encoder.decode(chunk))
+        start += max_tokens - overlap_tokens
 
-    split_content = []
-    for i in range(0, len(tokens), max_tokens):
-        sub_tokens = tokens[i:i + max_tokens]
-        sub_text = encoder.decode(sub_tokens)
-        split_content.append(sub_text)
-
-    return split_content
+    return chunks
 
 
 def process_file(content: str, max_tokens: int):
-
     # Preprocess content
     preprocessed_content = preprocess_content(content)
 
