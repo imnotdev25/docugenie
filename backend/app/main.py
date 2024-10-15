@@ -11,7 +11,7 @@ from app.lifetime import startup
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    description="FastAPI for AI Agents",
+    description="FastAPI backend for RAG-based document querying",
     version="0.1.0",
 )
 
