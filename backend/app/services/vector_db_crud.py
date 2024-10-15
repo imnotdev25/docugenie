@@ -27,8 +27,11 @@ def save_embeddings(index_name: str, doc_metadata: dict, embeddings: list, doc_u
             raise Exception(f"Error saving embeddings: {err}") from err
 
 
-def query_similar_embeddings(query_embedding: str, top_n: int = 5):
-    query_vector = np.array(query_embedding, dtype=np.float32).tolist()
+def query_similar_embeddings(query_embedding: str | list, top_n: int = 5):
+    if isinstance(query_embedding, str):
+        query_vector = np.array(query_embedding, dtype=np.float32).tolist()
+    elif isinstance(query_embedding, list):
+        query_vector = [np.array(emb, dtype=np.float32).tolist() for emb in query_embedding]
 
     with next(get_session()) as session:
         stmt = select(TextEmbedding).order_by(
