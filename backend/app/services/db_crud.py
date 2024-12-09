@@ -3,18 +3,16 @@ from app.models.users import Users, ChatHistory
 from app.logger import logger
 
 
-def save_user(user_data: Users):
+def save_user(user_data: dict):
     with next(get_session()) as session:
         try:
             new_user = Users(
-                short_id=user_data.short_id,
-                doc_uuid=user_data.doc_uuid,
-                doc_metadata=user_data.doc_metadata,
-                chat_history=user_data.chat_history
+                doc_uuid=user_data['doc_uuid'],
+                doc_metadata=user_data['doc_metadata']
             )
             session.add(new_user)
             session.commit()
-            return new_user.id
+            return new_user.user_id
         except Exception as err:
             logger.error(f"Error saving user: {err}")
             raise Exception(f"Error saving user: {err}") from err

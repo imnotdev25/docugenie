@@ -15,3 +15,4 @@ def shutdown(app: FastAPI):
         close_db()
 
     return _shutdown
+

@@ -1,8 +1,8 @@
-from uuid import uuid4
+from uuid import uuid4, UUID
 
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import SQLModel, Field, Column
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 # type alias for chat history
 ChatHistory = List[Dict[str, str]]
@@ -15,8 +15,7 @@ ChatHistoryInit = [
 ]
 
 class Users(SQLModel, table=True):
-    id: int = Field(default=uuid4(), primary_key=True)
-    short_id: str
-    doc_uuid: str
-    doc_metadata: dict
+    user_id: UUID = Field(default=uuid4(), primary_key=True)
+    doc_uuid: UUID
+    doc_metadata: Optional[dict] = Field(default=None, sa_column=Column(JSONB))
     chat_history: ChatHistory = Field(default=ChatHistoryInit, sa_column=Column(JSONB))

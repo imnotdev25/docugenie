@@ -1,4 +1,6 @@
 from fastapi import APIRouter, HTTPException
+
+from app.logger import logger
 from app.models.querying import QueryRequest, QueryResponse
 from app.services.vector_db_crud import query_similar_embeddings
 from app.llms.openai_llm import summarize_doc
@@ -23,10 +25,13 @@ def query_document(query_request: QueryRequest) -> QueryResponse:
     try:
         # Convert query embedding to text
         query_embedding = text_to_tokens(query_request.query)
+        logger.info(f"Query Embeddings {len(query_embedding)} from text {query_request.query} {query_embedding}")
         similar_embeddings = query_similar_embeddings(query_embedding)
+        logger.info(f"Found {len(similar_embeddings)} similar embeddings")
         document_content = tokens_to_text(similar_embeddings)
-        chat_history = get_chat_history(query_request.doc_uuid)
-        response = summarize_doc(query_request.doc_uuid, document_content, query_request.query, chat_history)
-        return QueryResponse(response=response)
+        logger.info(f"Document Content: {document_content}")
+        # chat_history = get_chat_history(query_request.doc_uuid)
+        # response = summarize_doc(query_request.doc_uuid, document_content, query_request.query, chat_history)
+        return QueryResponse(response=document_content)
     except Exception as e:
         raise HTTPException(status_code=400, detail="Error querying document") from e

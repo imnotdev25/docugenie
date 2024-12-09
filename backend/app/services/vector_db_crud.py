@@ -1,5 +1,5 @@
 import numpy as np
-from sqlmodel import select
+from sqlmodel import select, text
 from app.databases.db import get_session
 from app.models.embeddings import TextEmbedding
 from app.logger import logger
@@ -22,20 +22,17 @@ def save_embeddings(index_name: str, doc_metadata: dict, embeddings: list, doc_u
                 session.add(new_entry)
 
             session.commit()
+            logger.info(f"Saved {len(converted_embeddings)} embeddings")
         except Exception as err:
             logger.error(f"Error saving embeddings: {err}")
             raise Exception(f"Error saving embeddings: {err}") from err
 
 
-def query_similar_embeddings(query_embedding: str | list, top_n: int = 5):
-    if isinstance(query_embedding, str):
-        query_vector = np.array(query_embedding, dtype=np.float32).tolist()
-    elif isinstance(query_embedding, list):
-        query_vector = [np.array(emb, dtype=np.float32).tolist() for emb in query_embedding]
+def query_similar_embeddings(query_embedding: list, top_n: int = 5):
 
     with next(get_session()) as session:
-        stmt = select(TextEmbedding).order_by(
-            TextEmbedding.embedding.l2_distance(query_vector)
+        stmt = select(TextEmbedding.embedding).order_by(
+            TextEmbedding.embedding.l2(query_embedding)
         ).limit(top_n)
 
         results = session.exec(stmt).all()

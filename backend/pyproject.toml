@@ -22,7 +22,7 @@ python-pptx = "^1.0.2"
 bs4 = "^0.0.2"
 pandas = "^2.2.3"
 tiktoken = "^0.8.0"
-
+langchain-experimental = "^0.3.2"
 
 [build-system]
 requires = ["poetry-core"]
