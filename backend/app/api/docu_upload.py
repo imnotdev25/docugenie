@@ -1,53 +1,177 @@
-import os
-import uuid
+from uuid import UUID, uuid4
 
-from fastapi import APIRouter, UploadFile, HTTPException
+import logfire
+from fastapi import APIRouter, UploadFile, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.utils.file_utils import save_uploaded_file, is_valid_file
-from app.models.file import FileType
-from app.services.ingest import read_content, read_url_content
-from app.services.chunking import process_file
-from app.services.text_embedding import text_to_tokens
-from app.services.vector_db_crud import save_embeddings
-from app.services.db_crud import save_user
-from app.utils.file_utils import file_uuid
-from app.logger import logger
+from app.databases.db import get_session
+from app.models.api import UploadResponse
+from app.models.database import DocumentSection
+from app.services.document_service import read_content, read_url_content
+from app.services.text_embedding import split_into_chunks, create_embedding
+from app.services.user_service import get_user_by_doc_uuid, create_user
+from app.utils.file_utils import is_valid_file, get_file_type, save_uploaded_file, clean_text
 
-
-du_upload_router = APIRouter()
+upload_router = APIRouter()
 
 
-@du_upload_router.post("/upload/file")
-def upload_file(file: UploadFile):
-    # max_size 4MB
-    if file.size > 4 * 1024 * 1024:
-        logger.error(f"File size is too large: {file.size}")
-        raise HTTPException(status_code=400, detail="File size is too large.")
-    if not is_valid_file(file.filename):
-        logger.error(f"Invalid file type: {file.filename}")
-        raise HTTPException(status_code=400, detail="Invalid file type.")
-    doc_uuid = file_uuid()
-    save_uploaded_file(file, os.path.join("uploads", file.filename))
-    file_type = FileType[file.filename.split(".")[-1].lower()]
-    content = read_content(os.path.join("uploads", file.filename), file_type)
-    chunks = process_file(content, 512)
-    embeddings = text_to_tokens(chunks)
-    save_embeddings(str(uuid.uuid4()), {"filename": file.filename, "type": file_type.value}, embeddings, doc_uuid)
-    user_id = save_user(user_data={"doc_uuid": doc_uuid, "doc_metadata": {"filename": file.filename, "type": file_type.value}})
-    logger.info(f"Uploaded file: {file.filename} with UUID: {doc_uuid} and User ID: {user_id}")
-    return {"uuid": doc_uuid}
-
-
-@du_upload_router.post("/upload/url")
-def upload_url(url: str):
+@upload_router.post("/upload/file", response_model=UploadResponse)
+async def upload_file(
+        file: UploadFile,
+        session: AsyncSession = Depends(get_session)
+):
+    """Upload and process a document file"""
     try:
-        content = read_url_content(url)
-        doc_uuid = file_uuid()
-        embeddings = process_file(content, 512)
-        save_embeddings(str(uuid.uuid4()), {"url": url}, embeddings, doc_uuid)
-        user_id = save_user(user_data={"doc_uuid": doc_uuid, "doc_metadata": {"url": url}})
-        logger.info(f"Uploaded URL: {url} with UUID: {doc_uuid} and User ID: {user_id}")
-        return {"uuid": doc_uuid}
+        # Validate file type and size
+        if not is_valid_file(file.filename):
+            raise HTTPException(
+                status_code=400,
+                detail="Unsupported file type"
+            )
+
+        if file.size > 4 * 1024 * 1024:
+            logfire.error(f"File size is too large: {file.size}")
+            raise HTTPException(status_code=400, detail="File size is too large.")
+
+        doc_uuid = uuid4()
+
+        # Save file
+        file_path = await save_uploaded_file(file, doc_uuid)
+        file_type = get_file_type(file.filename)
+        if not file_path:
+            raise HTTPException(
+                status_code=500,
+                detail="Error saving file"
+            )
+        text_content = read_content(file_path, file_type)
+        if not text_content:
+            raise HTTPException(
+                status_code=400,
+                detail="Could not read file content"
+            )
+
+        # Prepare metadata
+        metadata = {
+            "filename": file.filename,
+            "file_path": file_path,
+            "size": len(text_content),
+        }
+
+        # Create user first
+        await create_user(session, doc_uuid, metadata)
+
+        # Split into chunks
+        chunks = await split_into_chunks(text_content)
+        #
+        # # Process chunks and create embeddings
+        for i, chunk in enumerate(chunks):
+            embedding = await create_embedding(chunk)
+
+            doc_section = DocumentSection(
+                doc_uuid=doc_uuid,
+                content=clean_text(chunk),
+                embedding=embedding,
+                section_number=i
+            )
+            session.add(doc_section)
+
+        await session.commit()
+
+        return UploadResponse(
+            doc_uuid=doc_uuid,
+            message="Document processed successfully"
+        )
+
     except Exception as e:
-        logger.error(f"Error uploading URL: {e}")
-        raise HTTPException(status_code=400, detail="Error uploading URL") from e
+        await session.rollback()
+        logfire.error(f"Upload error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Error processing upload"
+        )
+
+@upload_router.post("/upload/url", response_model=UploadResponse)
+async def upload_url(
+        url: str,
+        session: AsyncSession = Depends(get_session)
+):
+    """Upload and process a URL"""
+    try:
+        doc_uuid = uuid4()
+
+        # Read content from URL
+        text_content = read_url_content(url)
+        if not text_content:
+            raise HTTPException(
+                status_code=400,
+                detail="Could not read URL content"
+            )
+
+        # Prepare metadata
+        metadata = {
+            "url": url,
+            "size": len(text_content),
+        }
+
+        # Create user first
+        await create_user(session, doc_uuid, metadata)
+
+        # Split into chunks
+        chunks = await split_into_chunks(text_content)
+
+        # Process chunks and create embeddings
+        for i, chunk in enumerate(chunks):
+            embedding = await create_embedding(chunk)
+
+            doc_section = DocumentSection(
+                doc_uuid=doc_uuid,
+                content=clean_text(chunk),
+                embedding=embedding,
+                section_number=i
+            )
+            session.add(doc_section)
+
+        await session.commit()
+
+        return UploadResponse(
+            doc_uuid=doc_uuid,
+            message="URL processed successfully"
+        )
+
+    except Exception as e:
+        await session.rollback()
+        logfire.error(f"Upload error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Error processing URL"
+        )
+
+
+@upload_router.get("/documents/{doc_uuid}")
+async def check_document(
+        doc_uuid: UUID,
+        session: AsyncSession = Depends(get_session)
+):
+    """Check if document exists and return its metadata"""
+    try:
+        user = await get_user_by_doc_uuid(session, doc_uuid)
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail="Document not found"
+            )
+
+        return {
+            "doc_uuid": user.doc_uuid,
+            "metadata": user.doc_metadata,
+            "created_at": user.created_at
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logfire.error(f"Error checking document: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Error checking document"
+        )

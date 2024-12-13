@@ -2,6 +2,7 @@ from enum import Enum
 
 from pydantic import BaseModel
 
+
 class FileType(Enum):
     pdf = "PDF"
     docx = "DOCX"
