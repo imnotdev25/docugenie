@@ -50,7 +50,7 @@ async def update_chat_history(
         # Create new chat entry
         new_chat_entry = {
             "user_input": user_input,
-            "response": response
+            "assistant_response": response
         }
 
         # Update chat history

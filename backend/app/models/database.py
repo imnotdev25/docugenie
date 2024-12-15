@@ -14,7 +14,7 @@ ChatHistory = List[Dict[str, str]]
 ChatHistoryInit = [
     {
         "user_input": "Hello! There!!!",
-        "response": "Hi there! I'm docugenie, your document assistant. How can I help you today?"
+        "assistant_response": "Hi there! I'm docugenie, your document assistant. How can I help you today?"
     }
 ]
 

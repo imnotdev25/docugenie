@@ -31,7 +31,7 @@ class GPTService:
         history_context = ""
         if chat_history:
             history_context = "\n".join(
-                f"User: {history['user_input']}: \nAssistant: {history['response']}"
+                f"User: {history['user_input']}: \nAssistant: {history['assistant_response']}"
                 for history in chat_history
             )
 
