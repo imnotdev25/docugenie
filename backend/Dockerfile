@@ -18,6 +18,6 @@ ENV PYTHONPATH=/app
 
 COPY app/ /app/app
 
-ENTRYPOINT ["uvicorn", "app.main:app", "--workers", "8"]
+ENTRYPOINT ["uvicorn", "app.main:app", "--workers", "8", "--host", "0.0.0.0", "--port", "8000"]
 
 EXPOSE 8000
