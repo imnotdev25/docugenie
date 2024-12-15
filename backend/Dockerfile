@@ -18,10 +18,6 @@ ENV PYTHONPATH=/app
 
 COPY app/ /app/app
 
-COPY ./docker-entrypoint.sh /app/
-
-RUN chmod +x /app/docker-entrypoint.sh
-
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
+ENTRYPOINT ["uvicorn", "app.main:app", "--workers", "8"]
 
 EXPOSE 8000
