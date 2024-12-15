@@ -1,79 +1,111 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Button } from "@/components/ui/button.jsx";
-import { Textarea } from "@/components/ui/textarea.jsx";
-import { Send, HelpCircle, Upload, Loader } from "lucide-react";
-import UploadOverlay from '@/components/UploadOverlay.jsx';
-import HelpOverlay from '@/components/HelpOverlay.jsx';
-import ChatMessage from '@/components/ChatMessage.jsx';
-import Toast from '@/components/Toast.jsx';
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Send, HelpCircle, Upload, Loader2 } from "lucide-react";
+import UploadOverlay from '@/components/UploadOverlay';
+import HelpOverlay from '@/components/HelpOverlay';
+import ChatMessage from '@/components/ChatMessage';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useToast } from "@/components/ui/use-toast";
 
 const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [showUpload, setShowUpload] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
-  const [warning, setWarning] = useState(false);
-  const [toast, setToast] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const textareaRef = useRef(null);
+  const messagesEndRef = useRef(null);
   const navigate = useNavigate();
   const { uuid } = useParams();
+  const { toast } = useToast();
 
+  // Fetch chat history when component mounts or uuid changes
   useEffect(() => {
     if (uuid) {
-      fetchChatHistory(uuid);
+      fetchChatHistory();
     }
   }, [uuid]);
 
-  const fetchChatHistory = async (uuid) => {
+  // Auto scroll to bottom when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const fetchChatHistory = async () => {
     try {
-      const response = await fetch(`${process.env.API_URL}/api/query/history`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ uuid }),
-      });
-      if (response.ok) {
-        const history = await response.json();
-        setMessages(history);
+      const resp = await fetch(
+          `${import.meta.env.VITE_API_URL}/documents/${uuid}/chat-history`
+      );
+
+      if (!resp.ok) {
+        throw new Error('Failed to fetch chat history');
       }
+
+      const history = await resp.json();
+      setMessages(history.flatMap(msg => [
+        { type: 'user', content: msg.user_input },
+        { type: 'assistant', content: msg.assistant_response },
+      ]));
     } catch (error) {
       console.error('Error fetching chat history:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load chat history",
+        variant: "destructive",
+      });
     }
   };
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (inputMessage.trim()) {
-      setMessages([...messages, { type: 'user', content: inputMessage }]);
-      setInputMessage('');
-      setIsLoading(true);
+    if (!inputMessage.trim() || isLoading) return;
 
-      try {
-        const response = await fetch(`${process.env.API_URL}/api/query/${uuid}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ query: inputMessage }),
-        });
+    const userMessage = inputMessage.trim();
+    setInputMessage('');
+    setIsLoading(true);
 
-        if (response.ok) {
-          const botResponse = await response.json();
-          setMessages(prev => [...prev, { type: 'bot', content: botResponse.response }]);
-        } else {
-          setToast({ message: 'Failed to get response from server', type: 'error' });
-        }
-      } catch (error) {
-        console.error('Error sending message:', error);
-        setToast({ message: 'Error sending message', type: 'error' });
-      } finally {
-        setIsLoading(false);
+    // Add user message immediately
+    setMessages(prev => [...prev, { type: 'user', content: userMessage }]);
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/query`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: userMessage,
+          doc_uuid: uuid,
+          limit: 5
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get response');
       }
-    } else {
-      setWarning(true);
+
+      const data = await response.json();
+
+      // Add assistant's response
+      setMessages(prev => [...prev, {
+        type: 'assistant',
+        content: data.gpt_response
+      }]);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to get response from assistant",
+        variant: "destructive",
+      });
+      // Remove the user's message if there was an error
+      // setMessages(prev => prev.slice(0, -1));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -84,81 +116,77 @@ const Chat = () => {
     }
   };
 
-  const handleTextareaChange = (e) => {
-    setInputMessage(e.target.value);
-  };
-
-  const handleUploadSuccess = async (fileName) => {
-    setToast({ message: `File '${fileName}' Uploaded`, type: 'success' });
-    setIsLoading(true);
-    try {
-      const response = await fetch(`${process.env.API_URL}/api/upload`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ fileName }),
+  useEffect(() => {
+    if (!uuid) {
+      toast({
+        title: "No Document Selected",
+        description: "Please upload a document to continue",
+        variant: "destructive",
       });
-      if (response.ok) {
-        const { uuid } = await response.json();
-        navigate(`/chat/${uuid}`);
-      } else {
-        setToast({ message: 'Failed to process uploaded file', type: 'error' });
-      }
-    } catch (error) {
-      console.error('Error processing upload:', error);
-      setToast({ message: 'Error processing upload', type: 'error' });
-    } finally {
-      setIsLoading(false);
     }
-  };
+  }, [uuid]);
+
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100">
-      <div className="flex-1 overflow-y-auto p-4">
-        {messages.map((message, index) => (
-          <ChatMessage key={index} message={message} />
-        ))}
-      </div>
-      <form onSubmit={handleSendMessage} className="p-4 bg-white border-t">
-        <div className="flex items-center space-x-2">
-          <Button type="button" variant="outline" onClick={() => setShowUpload(true)} className="h-10 w-10 p-0 flex items-center justify-center">
-            <Upload className="h-4 w-4" />
-          </Button>
-          <Button type="button" variant="outline" onClick={() => setShowHelp(true)} className="h-10 w-10 p-0 flex items-center justify-center">
-            <HelpCircle className="h-4 w-4" />
-          </Button>
-          <div className="flex-1 relative">
-            <Textarea
-              ref={textareaRef}
-              value={inputMessage}
-              onChange={handleTextareaChange}
-              onKeyDown={handleKeyDown}
-              placeholder="Type a new message here"
-              className={`w-full py-2 px-3 resize-none ${warning ? 'border-red-500' : ''}`}
-              style={{
-                height: '40px',
-                minHeight: '40px',
-                maxHeight: '40px',
-                overflow: 'hidden',
-                transition: 'border-color 0.3s ease',
-              }}
-            />
+      <div className="flex flex-col h-screen bg-gray-50">
+        <div className="flex-1 overflow-y-auto p-4">
+          {messages.map((message, index) => (
+              <ChatMessage key={index} message={message} />
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <form onSubmit={handleSendMessage} className="p-4 bg-white border-t">
+          <div className="flex items-center space-x-2">
+            <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowUpload(true)}
+                className="h-10 w-10 p-0"
+            >
+              <Upload className="h-4 w-4" />
+            </Button>
+            <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowHelp(true)}
+                className="h-10 w-10 p-0"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </Button>
+
+            <div className="flex-1">
+              <Textarea
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Type your message..."
+                  className="min-h-[40px] max-h-[200px]"
+                  disabled={isLoading}
+              />
+            </div>
+
+            <Button
+                type="submit"
+                disabled={isLoading || !inputMessage.trim()}
+                className="h-10 w-10 p-0"
+            >
+              {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                  <Send className="h-4 w-4" />
+              )}
+            </Button>
           </div>
-          <Button type="submit" className="h-10 w-10 p-0 flex items-center justify-center">
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
-      </form>
-      {showUpload && <UploadOverlay onClose={() => setShowUpload(false)} onUploadSuccess={handleUploadSuccess} />}
-      {showHelp && <HelpOverlay onClose={() => setShowHelp(false)} />}
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      {isLoading && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <Loader className="animate-spin text-white" size={48} />
-        </div>
-      )}
-    </div>
+        </form>
+
+        {showUpload && (
+            <UploadOverlay onClose={() => setShowUpload(false)} />
+        )}
+        {showHelp && (
+            <HelpOverlay onClose={() => setShowHelp(false)} />
+        )}
+      </div>
   );
 };
 

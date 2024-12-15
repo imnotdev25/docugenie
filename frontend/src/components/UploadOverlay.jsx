@@ -1,105 +1,166 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X, Upload, Link, Check } from "lucide-react";
+import { X, Upload, Link } from "lucide-react";
+import { useNavigate } from 'react-router-dom';
+import { useToast } from "@/components/ui/use-toast";
 
-const UploadOverlay = ({ onClose, onUploadSuccess }) => {
+const UploadOverlay = ({ onClose }) => {
   const [isFileUpload, setIsFileUpload] = useState(true);
-  const [webUrls, setWebUrls] = useState('');
+  const [url, setUrl] = useState(''); // Changed from webUrls to url
   const [selectedFile, setSelectedFile] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isFileUpload && selectedFile) {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
+    setIsLoading(true);
 
-      try {
-        const response = await fetch(`${process.env.API_URL}/api/upload`, {
+    try {
+      let response;
+
+      if (isFileUpload && selectedFile) {
+        // File upload
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+
+        response = await fetch(`${import.meta.env.VITE_API_URL}/upload/file`, {
           method: 'POST',
           body: formData,
         });
-
-        if (response.ok) {
-          const { uuid } = await response.json();
-          onUploadSuccess(selectedFile.name);
-          onClose();
-        } else {
-          console.error('Upload failed');
-        }
-      } catch (error) {
-        console.error('Error uploading file:', error);
+      } else if (!isFileUpload && url.trim()) {
+        // URL upload
+        response = await fetch(`${import.meta.env.VITE_API_URL}/upload/url`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ url: url.trim() }), // Changed payload structure
+        });
+      } else {
+        throw new Error('Please provide a file or URL');
       }
-    } else if (!isFileUpload && webUrls) {
-      // Handle web URL upload
-      console.log('Web URLs:', webUrls);
-      onUploadSuccess('Web URLs');
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Upload failed');
+      }
+
+      const data = await response.json();
+
+      toast({
+        title: "Success",
+        description: isFileUpload
+            ? "Document uploaded successfully!"
+            : "URL processed successfully!",
+      });
+
+      navigate(`/chat/${data.doc_uuid}`);
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to process document",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
       onClose();
     }
   };
 
   const handleFileChange = (e) => {
-    setSelectedFile(e.target.files[0]);
+    const file = e.target.files[0];
+    if (file && file.size > 5 * 1024 * 1024) { // 5MB limit
+      toast({
+        title: "Error",
+        description: "File size should be less than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+    setSelectedFile(file);
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-lg w-full max-w-md">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Upload</h2>
-          <Button variant="ghost" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="flex mb-4">
-          <Button
-            variant={isFileUpload ? "default" : "outline"}
-            onClick={() => setIsFileUpload(true)}
-            className="flex-1 mr-2"
-          >
-            <Upload className="h-4 w-4 mr-2" /> File
-          </Button>
-          <Button
-            variant={!isFileUpload ? "default" : "outline"}
-            onClick={() => setIsFileUpload(false)}
-            className="flex-1 ml-2"
-          >
-            <Link className="h-4 w-4 mr-2" /> Web URLs
-          </Button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          {isFileUpload ? (
-            <div className="border-2 border-dashed border-gray-300 p-4 text-center rounded-lg mb-4">
-              <p>Upload File</p>
-              <p className="text-sm text-gray-500">Documents less than 5MB</p>
-              <Input type="file" className="hidden" id="fileUpload" onChange={handleFileChange} />
-              <Button variant="outline" className="mt-2" onClick={() => document.getElementById('fileUpload').click()}>
-                <Upload className="h-4 w-4 mr-2" /> Choose File
-              </Button>
-              {selectedFile && <p className="mt-2 text-sm">{selectedFile.name}</p>}
-            </div>
-          ) : (
-            <Input
-              value={webUrls}
-              onChange={(e) => setWebUrls(e.target.value)}
-              placeholder="Enter web URLs (url_1, url_2, ...)"
-              className="mb-4"
-            />
-          )}
-          <Button type="submit" className="w-full">
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-background p-6 rounded-lg w-full max-w-md">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Upload Document</h2>
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="flex mb-4 gap-2">
+            <Button
+                variant={isFileUpload ? "default" : "outline"}
+                onClick={() => setIsFileUpload(true)}
+                className="flex-1"
+            >
+              <Upload className="h-4 w-4 mr-2" /> File
+            </Button>
+            <Button
+                variant={!isFileUpload ? "default" : "outline"}
+                onClick={() => setIsFileUpload(false)}
+                className="flex-1"
+            >
+              <Link className="h-4 w-4 mr-2" /> URL
+            </Button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
             {isFileUpload ? (
-              <>
-                <Upload className="h-4 w-4 mr-2" /> Upload
-              </>
+                <div className="border-2 border-dashed border-muted rounded-lg p-4 text-center">
+                  <Input
+                      type="file"
+                      id="file"
+                      className="hidden"
+                      onChange={handleFileChange}
+                      accept=".pdf,.doc,.docx,.txt"
+                  />
+                  <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById('file').click()}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Choose File
+                  </Button>
+                  {selectedFile && (
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {selectedFile.name}
+                      </p>
+                  )}
+                </div>
             ) : (
-              <>
-                <Check className="h-4 w-4 mr-2" /> Done
-              </>
+                <Input
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="Enter URL"
+                    type="url"
+                    className="w-full"
+                />
             )}
-          </Button>
-        </form>
+
+            <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading || (!selectedFile && !url)}
+            >
+              {isLoading ? (
+                  <>Loading...</>
+              ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload
+                  </>
+              )}
+            </Button>
+          </form>
+        </div>
       </div>
-    </div>
   );
 };
 
