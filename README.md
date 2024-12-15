@@ -80,7 +80,7 @@ DELETE /api/v1/documents/{doc_uuid}/chat-history
 ## Environment Variables 🔑
 
 ```env
-# nessary env variables
+# necessary env variables
 POSTGRES_URI
 LOGFIRE_TOKEN
 LOGFIRE_PROJECT
