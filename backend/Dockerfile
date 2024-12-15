@@ -1,4 +1,4 @@
-FROM python3.11
+FROM python:3.11-slim
 LABEL authors="bhavik"
 
 RUN apt-get update && apt-get install -y wget curl
