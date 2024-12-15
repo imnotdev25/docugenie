@@ -6,7 +6,7 @@ import Fastapi from '@/assets/fastapi.svg';
 import ReactIcon from '@/assets/react.svg';
 import Langchain from '@/assets/langchain.svg';
 import OpenAI from '@/assets/openai.svg';
-import ChromaDB from '@/assets/chroma.svg';
+import PgVector from '@/assets/pgvector.svg';
 import VectorSearch from '@/assets/elasticsearch.svg';
 
 const Index = () => {
@@ -17,7 +17,7 @@ const Index = () => {
     { name: 'ReactJS', image: ReactIcon, color: 'bg-blue-500' },
     { name: 'Open AI', image: OpenAI, color: 'bg-black' },
     { name: 'Lang Chain', image: Langchain, color: 'bg-green-500' },
-    { name: 'Chroma DB', image: ChromaDB, color: 'bg-yellow-500' },
+    { name: 'Pg Vector', image: PgVector, color: 'bg-yellow-500' },
     { name: 'Vector Search', image: VectorSearch, color: 'bg-pink-700' },
   ];
 
