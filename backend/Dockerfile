@@ -16,7 +16,7 @@ RUN poetry install --no-root --only main
 
 ENV PYTHONPATH=/app
 
-COPY backend/app/ /app/app
+COPY app/ /app/app
 
 COPY ./docker-entrypoint.sh /app/
 
